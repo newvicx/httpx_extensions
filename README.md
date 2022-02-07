@@ -10,7 +10,7 @@ You can install httpx_extensions via pip
 ## Docs
 Refer to the HTTPX [AsyncClient](https://www.python-httpx.org/async/) documentation as the API is identical. Read the rest of this document to understand the minor differences
 ## Compatability
- - httpx_extensions is an extension of HTTPX (duh) thus the API is identical to the HTTPX [AsyncClient](https://www.python-httpx.org/async/) and nearly all of the code snippets from HTTPX can be used with httpx_extensions by simply swapping the AsyncClient for the ExClient
+ - httpx_extensions is an extension of HTTPX (duh) thus the API is identical to the HTTPX AsyncClient and nearly all of the code snippets from HTTPX can be used with httpx_extensions by simply swapping the AsyncClient for the ExClient
  - All HTTPX models such as Headers, Limits, Request are compatible and should be used as httpx_extensions does not ship with these models. The lone exception to this is the Response object. httpx_extensions returns instances of the ResponseMixin class. For all intents and purposes, from a user perspective, the ResponseMixin object is identical to the HTTPX Response object and should be treated as such
  - All other HTTPX features are supported as well with only a couple of caveats. See Unsupported Features below
 ## Unsupported Features
@@ -164,5 +164,4 @@ In the above example we have a connection pool with 2 available connections and 
 
  - Python 3.6+
  - httpx 0.22.0
- - pywin32==303 (for Negotiate Auth)
 
