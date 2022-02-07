@@ -2,11 +2,12 @@ import logging
 import ssl
 import uuid
 import warnings
+from contextlib import suppress
 from types import TracebackType
 from typing import AsyncIterable, AsyncIterator, Optional, Type
 
 from httpcore import AsyncConnectionPool
-from httpcore._exceptions import ConnectionNotAvailable, UnsupportedProtocol
+from httpcore._exceptions import ConnectionNotAvailable, RemoteProtocolError, UnsupportedProtocol
 from httpcore._models import Request, Response
 from httpcore._synchronization import AsyncEvent
 from httpcore.backends.base import AsyncNetworkBackend
@@ -73,8 +74,13 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
         uds: str = None,
         network_backend: AsyncNetworkBackend = None,
     ) -> None:
-        
-        assert not http2
+
+        if http2:
+            raise RuntimeError("HTTP 2 not supported, use stock versions of httpcore or httpx")
+        if keepalive_expiry == 0:
+            raise ValueError("keepalive_expiry cannot be 0")
+        if max_keepalive_connections == 0:
+            raise ValueError("max_keepalive_connections cannot be 0")
 
         super().__init__(
             ssl_context=ssl_context,
@@ -92,6 +98,7 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
         self._idle_connections = {}
         self._reserved_connections = {}
         self._connection_pool = {}
+        self._check_http2 = http2
 
     async def _attempt_to_acquire_connection(self, status: RequestStatusMixin) -> bool:
         """
@@ -239,7 +246,6 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
             self._requests.append(status)
             await self._close_expired_connections()
             acquired = await self._attempt_to_acquire_connection(status)
-            logger.debug("Aquired connection: %s", acquired)
 
         while True:
             timeouts = request.extensions.get("timeout", {})
@@ -269,11 +275,11 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
                     await self._attempt_to_acquire_connection(status)
             except BaseException as exc:
                 await self.response_closed(status)
-                self.release_connection(status.conn_id)
+                await self.release_connection(status.conn_id)
                 raise exc
             else:
                 break
-        
+
         # add conn_id to response object extensions
         response.extensions.update(
             {"conn_id": status.conn_id}
@@ -291,7 +297,7 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
 
     async def response_closed(self, status: RequestStatusMixin) -> None:
         """
-        This method acts as a callback once the request/response cycle is complete.
+        This method acts as a callback once a request/response cycle is complete.
         It is called into from the `ConnectionPoolByteStreamMixin.aclose()` method.
         """
         assert status.connection is not None
@@ -308,17 +314,7 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
                 self._pool.remove(conn_id)
                 self._connection_pool.pop(conn_id)
                 self._active_connections.pop(conn_id, None)
-                # self._idle_connections.pop(conn_id, None)
-                # if conn_id in self._reserved_connections:
-                #     self._reserved_connections.pop(conn_id)
-                #     warnings.warn(
-                #         f"Reserved connection id '{conn_id}' was closed after the "
-                #         f"the response for {repr(status.request)} was closed. Any "
-                #         "subsequent requests attempting to use this connection will "
-                #         "be assigned a new one which may break auth flow",
-                #         UserWarning,
-                #         stacklevel=2
-                #     )
+                
                 warnings.warn(
                     f"Connection '{conn_id}' was closed after the "
                     f"the response for {repr(status.request)} was closed. Any "
@@ -328,17 +324,26 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
                     stacklevel=2
                 )
             else:
-                self._reserved_connections.update(
-                    {conn_id: self._active_connections.pop(conn_id)}
-                )
-                logger.debug(f"{conn_id} added to reserved connections")
+                try:
+                    self._reserved_connections.update(
+                        {conn_id: self._active_connections.pop(conn_id)}
+                    )
+                    logger.debug(f"{conn_id} added to reserved connections")
+                except KeyError:
+                    # if the connection is not in active_connections the pool
+                    # might have been closed in which case the connection_pool
+                    # would be empty. if it is, return None
+                    if self._connection_pool == {}:
+                        return
+                    # if it isnt this is a bug
+                    raise RuntimeError("Using an inactive connection")
 
             # Housekeeping.
             await self._close_expired_connections()
 
     async def release_connection(self, conn_id) -> None:
         """
-        This method acts as a callback once an HTTPX auth flow has completed.
+        This method acts as a callback once a request is fully complete.
         The connection is released back to the pool. It is called into from the
         `ConnectionPoolByteStreamMixin.release()` method.
         """
@@ -349,7 +354,8 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
                 logger.debug("Connection %s released to pool", conn_id)
             else:
                 logger.warning(
-                    "Attempted to release un-reserved connection '%s'",
+                    "Attempted to release un-reserved connection the connection "
+                    "might have been closed. Connection id: '%s'",
                     conn_id
                 )
 

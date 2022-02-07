@@ -38,24 +38,6 @@ class ResponseMixin(Response):
         )
         self.release_on_close = False
     
-    def read(self) -> bytes:
-        raise NotImplementedError()
-
-    def iter_bytes(self, chunk_size: int = None) -> typing.Iterator[bytes]:
-        raise NotImplementedError()
-
-    def iter_text(self, chunk_size: int = None) -> typing.Iterator[str]:
-        raise NotImplementedError()
-    
-    def iter_lines(self) -> typing.Iterator[str]:
-        raise NotImplementedError()
-
-    def iter_raw(self, chunk_size: int = None) -> typing.Iterator[bytes]:
-        raise NotImplementedError()
-
-    def close(self) -> None:
-        raise NotImplementedError()
-    
     async def aclose(self) -> None:
         await super().aclose()
         if self.release_on_close:
@@ -73,6 +55,7 @@ class ResponseMixin(Response):
             # likely unrecoverable anyway so its okay if it cant be reserved
             await self.aclose()
         if hasattr(self, 'stream'):
-            await self.stream.release()
+            if hasattr(self.stream, 'release'):
+                await self.stream.release()
 
     

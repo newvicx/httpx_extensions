@@ -3,5 +3,16 @@ requires = [
     "setuptools>=43",
     "wheel"
 ]
-
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = "-rxXs"
+filterwarnings = [
+  "error",
+  "default:::uvicorn"
+]
+markers = [
+  "copied_from(source, changes=None): mark test as copied from somewhere else, along with a description of changes made to accodomate e.g. our test setup",
+  "network: marks tests which require network connection. Used in 3rd-party build environments that have network disabled."
+]
+asyncio_mode = "strict"

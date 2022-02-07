@@ -62,7 +62,8 @@ class BoundAsyncStreamMixin(AsyncByteStream):
         await self._stream.aclose()
 
     async def release(self) -> None:
-        await self._stream.release()
+        if hasattr(self._stream, "release"):
+            await self._stream.release()
 
 
 class ExClient(AsyncClient):
@@ -114,7 +115,7 @@ class ExClient(AsyncClient):
             max_redirects=max_redirects,
             event_hooks=event_hooks,
             base_url=base_url,
-            transport=AsyncHTTPTransportMixin,
+            transport=transport,
             app=None,
             trust_env=trust_env,
         )
@@ -130,6 +131,14 @@ class ExClient(AsyncClient):
         app: typing.Callable = None,
         trust_env: bool = True,
     ) -> AsyncBaseTransport:
+
+        if transport is not None:
+            if not isinstance(transport, AsyncHTTPTransportMixin):
+                raise TypeError(
+                    f"Unsupported transport {type(transport)}. Use {AsyncHTTPTransportMixin.__name__}"
+                )
+            return transport
+
         return AsyncHTTPTransportMixin(
             verify=verify,
             cert=cert,
@@ -149,6 +158,7 @@ class ExClient(AsyncClient):
         limits: Limits = DEFAULT_LIMITS,
         trust_env: bool = True,
     ) -> AsyncBaseTransport:
+
         return AsyncHTTPTransportMixin(
             verify=verify,
             cert=cert,
@@ -197,14 +207,16 @@ class ExClient(AsyncClient):
         try:
             if not stream:
                 await response.aread()
-                await response.release()
+                if hasattr(response, 'release'):
+                    await response.release()
             else:
                 response.release_on_close = True
             return response
 
         except Exception as exc:  # pragma: no cover
             await response.aclose()
-            await response.release()
+            if hasattr(response, 'release'):
+                await response.release()
             raise exc
 
     async def _send_handling_auth(
@@ -234,13 +246,15 @@ class ExClient(AsyncClient):
                     await response.aread()
                     reserved_connection = next_request.extensions.get("conn_id")
                     if not reserved_connection:
-                        await response.release()
+                        if hasattr(response, 'release'):
+                            await response.release()
                     request = next_request
                     history.append(response)
 
                 except Exception as exc:
                     await response.aclose()
-                    await response.release()
+                    if hasattr(response, 'release'):
+                        await response.release()
                     raise exc
         finally:
             await auth_flow.aclose()
@@ -275,13 +289,16 @@ class ExClient(AsyncClient):
 
                 if follow_redirects:
                     await response.aread()
+                    conn_id = response.extensions.get("conn_id")
+                    request.extensions.update({"conn_id": conn_id})
                 else:
                     response.next_request = request
                     return response
 
             except Exception as exc:
                 await response.aclose()
-                await response.release()
+                if hasattr(response, 'release'):
+                    await response.release()
                 raise exc
 
     async def _send_single_request(self, request: Request) -> ResponseMixin:
