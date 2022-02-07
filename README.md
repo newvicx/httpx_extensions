@@ -1,5 +1,5 @@
 ﻿# HTTPX_Extensions
-A client extension of HTTPX AsyncClient with support for Negotiate/NTLM auth via SSPI
+A client extension of HTTPX AsyncClient with connection pool management features
 ## Background
 httpx_extensions is an extension of the AsyncClient from [HTTPX](https://www.python-httpx.org/). It modifies the way the connection pooling works so users can control exactly which open connection a request is sent on. This comes in handy for connection based authentication methods such as NTLM. When using HTTP 1.1 with connection pooling, the stock AsyncClient (and other clients from of other async frameworks such as aiohttp) implicitely release a connection back to the pool as soon as the request/response cycle is complete. When doing something like NTLM which takes 3 request/response cycles, there is no guarantee that the next 2 requests will go out on the same connection as the first. httpx_extensions attempts to solve this problem by introducing introducing the concept of "reserved connections" and not releasing connections back to the pool until the final response (regardless of the number of request/response cycles) is served up to the user. In 99% of cases, this feature is not required and in those cases you should use the AsyncClient from HTTPX or any other async client of your choosing. But, if you are doing something like NTLM or some other workflow that requires you to control which requests are sent on which connection, httpx_extensions fits the bill
 
@@ -10,7 +10,7 @@ You can install httpx_extensions via pip
 ## Docs
 Refer to the HTTPX [AsyncClient](https://www.python-httpx.org/async/) documentation as the API is identical. Read the rest of this document to understand the minor differences
 ## Compatability
- - httpx_extensions is an extension of HTTPX (duh) thus the API is identical to the HTTPX [AsyncClient](https://www.python-httpx.org/async/) and nearly all of the code snippets from HTTPX can be used with httpx_extensions by simply swapping the AsyncClient for the ExClient
+ - httpx_extensions is an extension of HTTPX (duh) thus the API is identical to the HTTPX AsyncClient and nearly all of the code snippets from HTTPX can be used with httpx_extensions by simply swapping the AsyncClient for the ExClient
  - All HTTPX models such as Headers, Limits, Request are compatible and should be used as httpx_extensions does not ship with these models. The lone exception to this is the Response object. httpx_extensions returns instances of the ResponseMixin class. For all intents and purposes, from a user perspective, the ResponseMixin object is identical to the HTTPX Response object and should be treated as such
  - All other HTTPX features are supported as well with only a couple of caveats. See Unsupported Features below
 ## Unsupported Features
@@ -164,5 +164,4 @@ In the above example we have a connection pool with 2 available connections and 
 
  - Python 3.6+
  - httpx 0.22.0
- - pywin32==303 (for Negotiate Auth)
 
