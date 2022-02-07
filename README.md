@@ -104,7 +104,7 @@ By assigning a "conn_id" to the request, the underlying connection pool will att
 
 Users will receive a warning in the first case where the connection has closed. To avoid case 2, it might be best to not set a keepalive expiry but you are not restricted from doing so
 ## Special Considerations
- - Redirects: If follow_redirects=True, the conn_id will be automatically appended to the redirect request and the connection pool will reuse that connection. However, if follow_redirects=False, sending the next_request from the resulting response object is not guarenteed to use the same connection even if the conn_id from the response is attached to next_request. If conn_id is appended to next_request a warning log will be issued saying "Connection id {conn_id} was given in request extensions but the connection is not reserved."
+ - Redirects: If follow_redirects=True, the conn_id will be automatically appended to the redirect request and the connection pool will reuse that connection. However, if follow_redirects=False, sending the next_request from the resulting response object is not guarenteed to use the same connection even if the conn_id from the response is attached to next_request. If conn_id is appended to next_request a warning log will be issued saying "Connection id {conn_id} was given in request extensions but the connection is not reserved. {Request} is not guarenteed to use the desired connection"
  - You can set the keepalive_expiry and max_keepalive_connections limits to anything but 0. Having connections that automatically close when the request/response cycle is done defeats the purpose of what this package was built for. Setting either property to 0 will raise a ValueError
 ## How it Works
 For the curious such...

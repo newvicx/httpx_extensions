@@ -14,12 +14,17 @@ The first beta release of http_extensions
 * MockTransport class
 
 ### Fixed
-* Setting 'follow_redirects=True' would break the response relationship to a connection and it wasnt guarenteed that a redirect request would use the same connection. This has been changed so now the client appends the conn_id to the redirect request. This behavior can be changed by implementing a "request" event hook which could check for and remove conn_id from the request extensions
+* Setting 'follow_redirects=True' would break the response relationship to a connection and it wasnt guaranteed that a redirect request would use the same connection. This has been changed so now the client appends the conn_id to the redirect request. This behavior can be changed by implementing a "request" event hook which could check for and remove conn_id from the request extensions
 
 ### Removed
-* Negotiate SSPI auth flow - Must be installed separately through pip. See "Auth Flows" section of README
+* Negotiate SSPI auth flow - Will create a separate repo for this flow
 * Sync methods on ResponseMixin no longer raise NotImplementedError
 
 ### Changed
 * Using http2=True raises a RuntimeError
 * Neither of the limits 'keepalive_expiry' and 'max_keepalive_connections' can be 0, it defeats the purpose of what httpx_extensions was built for. Passing either of these parameters with a value of 0 will raise a ValueError
+
+## 0.1.1 (February 6, 2022)
+
+* Minor changes to setup.py
+* Update some comments and log messages

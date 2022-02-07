@@ -127,8 +127,8 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
             else:
                 logger.warning(
                     "Connection id '%s' was given in request extensions "
-                    "but the connection is not reserved. %r is not guarenteed to "
-                    "use the desired connection which could break auth flow.",
+                    "but the connection is not reserved. %r is not guaranteed to "
+                    "use the desired connection",
                     conn_id,
                     status.request
                 )
@@ -197,8 +197,7 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
                     logger.warning(
                         "Reserved connection id '%s' has expired. "
                         "Additional requests attempting to use this connection "
-                        "will be assigned a different connection which may break "
-                        "auth flow",
+                        "will be assigned a different connection",
                         conn_id
                     )
 
@@ -267,7 +266,7 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
                     logger.warning(
                         "Connection id '%s' was unavailable. "
                         "%r must be sent on a different "
-                        "connection which could break auth flow.",
+                        "connection",
                         status.conn_id,
                         status.request
                     )
@@ -319,7 +318,7 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
                     f"Connection '{conn_id}' was closed after the "
                     f"the response for {repr(status.request)} was closed. Any "
                     "subsequent requests attempting to use this connection will "
-                    "be assigned a new one which may break auth flow",
+                    "be assigned a new one",
                     UserWarning,
                     stacklevel=2
                 )
@@ -335,7 +334,7 @@ class AsyncConnectionPoolMixin(AsyncConnectionPool):
                     # would be empty. if it is, return None
                     if self._connection_pool == {}:
                         return
-                    # if it isnt this is a bug
+                    # if it isnt, this is a bug
                     raise RuntimeError("Using an inactive connection")
 
             # Housekeeping.
